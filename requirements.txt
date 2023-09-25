@@ -1,16 +1,23 @@
-numpy
+numpy>=1.24
 scipy
 pandas
 matplotlib
-open3d==0.12.0
 catkin_pkg
-pybullet==2.7.9
-torch==1.7.0
+# pybullet==2.7.9 # never use pybullet  
+# torch==1.7.0
 pytorch-ignite
 tensorboard
 tqdm
 trimesh
-urdfpy
+# urdfpy # do not install the original version, install the forked version
+urdfpy @ git+https://github.com/SgtVincent/urdfpy.git
 cython
 scikit-image
 pykdtree
+open3d==0.16.0
+networkx>=2.5 # fix fractions bug for python >= 3.9
+
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==1.8.1+cu111 
+torchvision==0.9.1+cu111 
+torchaudio==0.8.1 

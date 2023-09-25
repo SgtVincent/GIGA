@@ -173,8 +173,8 @@ class Logger(object):
         io.append_csv(self.rounds_csv_path, round_id, object_count)
 
     def log_mesh(self, scene_mesh, aff_mesh, name):
-        scene_mesh.export(self.mesh_dir / (name + "_scene.obj"))
-        aff_mesh.export(self.mesh_dir / (name + "_aff.obj"))
+        scene_mesh.export(str(self.mesh_dir / (name + "_scene.obj")))
+        aff_mesh.export(str(self.mesh_dir / (name + "_aff.obj")))
 
     def log_grasp(self, round_id, state, timings, grasp, score, label):
         # log scene
