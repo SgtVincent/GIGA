@@ -109,8 +109,13 @@ venv.bak/
 
 # data
 /data
+output/
 *.swp
 
 # custom
 .DS_Store
 /notebooks
+
+# automatically generated library files 
+src/vgn/ConvONets/utils/libmcubes/mcubes.cpp
+src/vgn/ConvONets/utils/libsimplify/simplify_mesh.cpp
