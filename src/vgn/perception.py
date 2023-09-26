@@ -129,6 +129,142 @@ class TSDFVolume(object):
         return self._volume.extract_point_cloud()
 
 
+class ScalableTSDFVolume(object):
+    """Integration of multiple depth images using a TSDF."""
+
+    def __init__(self, size, resolution, color_type=None, voxel_size=None):
+        self.size = size # for cropped voxel grid 
+        self.resolution = resolution # for cropped voxel grid 
+        self.voxel_size = voxel_size
+        if voxel_size is None:
+            self.voxel_size = self.size / self.resolution
+        self.sdf_trunc = 4 * self.voxel_size
+
+        if color_type is None:
+            color = o3d.pipelines.integration.TSDFVolumeColorType.NoColor
+        elif color_type == "rgb":
+            color = o3d.pipelines.integration.TSDFVolumeColorType.RGB8
+        else:
+            raise ValueError("Unknown color type: {}".format(color_type))
+
+        self._volume = o3d.pipelines.integration.ScalableTSDFVolume(
+            voxel_length=self.voxel_size,
+            # resolution=self.resolution, # this is not supported by ScalableTSDFVolume
+            sdf_trunc=self.sdf_trunc,
+            color_type=color,
+        )
+
+        self.cropped_cloud:o3d.geometry.PointCloud = None
+        self.cropped_mesh:o3d.geometry.TriangleMesh = None
+        self.cropped_grid:o3d.geometry.VoxelGrid = None
+
+
+    def integrate(self, depth_img, intrinsic, extrinsic, rgb_img=None, mask_img=None):
+        """
+        Args:
+            depth_img: The depth image.
+            intrinsic: The intrinsic parameters of a pinhole camera model.
+            extrinsics: The transform from the TSDF to camera coordinates, T_eye_task.
+        """
+        if rgb_img is None:
+            rgb_img = np.zeros([depth_img.shape[0], depth_img.shape[1], 3], dtype=np.uint8)
+        
+        # mask out the points out of the region of interest
+        if mask_img is not None:
+            depth_img[mask_img == 0] = np.inf
+        
+        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
+            o3d.geometry.Image(rgb_img),
+            o3d.geometry.Image(depth_img),
+            depth_scale=1.0,
+            depth_trunc=3.0,
+            convert_rgb_to_intensity=False,
+        )
+
+        intrinsic = o3d.camera.PinholeCameraIntrinsic(
+            width=intrinsic.width,
+            height=intrinsic.height,
+            fx=intrinsic.fx,
+            fy=intrinsic.fy,
+            cx=intrinsic.cx,
+            cy=intrinsic.cy,
+        )
+
+        extrinsic = extrinsic.as_matrix()
+
+        self._volume.integrate(rgbd, intrinsic, extrinsic)
+
+    def set_region_of_interest(self, center, size):
+        """Set the region of interest for the TSDF volume to generate voxel grid as network input.
+
+        Args:
+            center: The center of the region of interest.
+            size: The size of the region of interest.
+        """
+        self.crop_center = center
+        self.crop_size = size
+
+        # create data for cropped region
+        self.cropped_cloud = self.crop_cloud(self.crop_center, self.crop_size)
+        self.cropped_mesh = self.crop_mesh(self.crop_center, self.crop_size)
+        self.cropped_grid = self.crop_grid(self.crop_center, self.crop_size)
+
+    def get_grid(self):
+        assert self.cropped_grid is not None, "Please set the region of interest first."
+        shape = (1, self.resolution, self.resolution, self.resolution)
+        tsdf_grid = np.zeros(shape, dtype=np.float32)
+        voxels = self.cropped_grid.get_voxels()
+        for voxel in voxels:
+            i, j, k = voxel.grid_index
+            tsdf_grid[0, i, j, k] = voxel.color[0]
+
+        return tsdf_grid
+
+    def crop_grid(self, crop_center, crop_size):
+        # crop voxel grid 
+        voxel_cloud = self._volume.extract_voxel_point_cloud()
+        # crop point cloud 
+        bounding_box = o3d.geometry.AxisAlignedBoundingBox(
+            min_bound=crop_center - crop_size / 2,
+            max_bound=crop_center + crop_size / 2,
+        )
+        cropped_voxel_cloud = voxel_cloud.crop(bounding_box)
+        cropped_voxel_size = self.size / self.resolution
+        min_bound = crop_center - crop_size / 2
+        max_bound = crop_center + crop_size / 2
+        cropped_grid = o3d.geometry.VoxelGrid.create_from_point_cloud_within_bounds(
+            cropped_voxel_cloud, voxel_size=cropped_voxel_size, min_bound=min_bound, max_bound=max_bound)
+        return cropped_grid
+    
+    def get_mesh(self):
+        assert self.cropped_mesh is not None, "Please set the region of interest first."
+        return self.cropped_mesh 
+    
+    def crop_mesh(self, crop_center, crop_size):
+        mesh = self._volume.extract_triangle_mesh()
+        # crop mesh
+        bounding_box = o3d.geometry.AxisAlignedBoundingBox(
+            min_bound=crop_center - crop_size / 2,
+            max_bound=crop_center + crop_size / 2,
+        )
+        cropped_mesh = mesh.crop(bounding_box)
+        return cropped_mesh
+
+    def get_cloud(self):
+        assert self.cropped_cloud is not None, "Please set the region of interest first."
+        return self.cropped_cloud
+
+    def crop_cloud(self, crop_center, crop_size):
+        point_cloud = self._volume.extract_point_cloud()
+        # crop point cloud 
+        bounding_box = o3d.geometry.AxisAlignedBoundingBox(
+            min_bound=crop_center - crop_size / 2,
+            max_bound=crop_center + crop_size / 2,
+        )
+        cropped_point_cloud = point_cloud.crop(bounding_box)
+        return cropped_point_cloud
+
+
 def create_tsdf(size, resolution, depth_imgs, intrinsic, extrinsics):
     tsdf = TSDFVolume(size, resolution)
     for i in range(depth_imgs.shape[0]):
