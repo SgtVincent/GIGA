@@ -237,7 +237,13 @@ class ScalableTSDFVolume(object):
         return cropped_grid
     
     def get_mesh(self):
-        assert self.cropped_mesh is not None, "Please set the region of interest first."
+        if self.cropped_mesh:
+            # return cropped mesh if region of interest is set
+            return self.cropped_mesh
+        else:
+            # return full mesh if region of interest is not set
+            mesh = self._volume.extract_triangle_mesh()
+            
         return self.cropped_mesh 
     
     def crop_mesh(self, crop_center, crop_size):
@@ -251,8 +257,13 @@ class ScalableTSDFVolume(object):
         return cropped_mesh
 
     def get_cloud(self):
-        assert self.cropped_cloud is not None, "Please set the region of interest first."
-        return self.cropped_cloud
+        if self.cropped_cloud:
+            # return cropped cloud if region of interest is set
+            return self.cropped_cloud
+        else:
+            # return full cloud if region of interest is not set
+            point_cloud = self._volume.extract_point_cloud()
+        return point_cloud
 
     def crop_cloud(self, crop_center, crop_size):
         point_cloud = self._volume.extract_point_cloud()

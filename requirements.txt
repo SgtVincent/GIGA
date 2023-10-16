@@ -1,4 +1,4 @@
-numpy>=1.24
+numpy==1.22
 scipy
 pandas
 matplotlib
@@ -14,7 +14,8 @@ urdfpy @ git+https://github.com/SgtVincent/urdfpy.git
 cython
 scikit-image
 pykdtree
-open3d==0.16.0
+open3d
+# open3d==0.16.0
 networkx>=2.5 # fix fractions bug for python >= 3.9
 
 --find-links https://download.pytorch.org/whl/torch_stable.html
