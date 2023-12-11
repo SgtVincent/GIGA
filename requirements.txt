@@ -1,12 +1,9 @@
-numpy==1.22
+numpy==1.23 # required by main env 
 scipy
 pandas
 matplotlib
-catkin_pkg
-# pybullet==2.7.9 # never use pybullet  
-# torch==1.7.0
 pytorch-ignite
-tensorboard
+# tensorboard # uncomment if you want to use tensorboard to visualize training progress
 tqdm
 trimesh
 # urdfpy # do not install the original version, install the forked version
@@ -15,10 +12,9 @@ cython
 scikit-image
 pykdtree
 open3d
-# open3d==0.16.0
 networkx>=2.5 # fix fractions bug for python >= 3.9
 
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==1.8.1+cu111 
-torchvision==0.9.1+cu111 
-torchaudio==0.8.1 
+# --find-links https://download.pytorch.org/whl/torch_stable.html
+# torch==1.8.1+cu111 
+# torchvision==0.9.1+cu111 
+# torchaudio==0.8.1 
